@@ -219,6 +219,34 @@ class RJMCMC:
         """
         # TO DO: implement height change move
         raise NotImplementedError("Height change move not implemented yet.")
+        k = (len(state) - 1) // 2
+        proposed_state = deepcopy(state)
+
+        # Choose which height to use
+        j = np.random.randint(1, k+1)
+
+        # Proprose new position
+        h_j = state[j-1]
+        h_j_prime = np.random.normal(loc=h_j, 0.005)
+        proposed_state[j-1] = h_j_prime
+
+        # log likelihood ratio
+        log_like_ratio = self.log_likelihood(proposed_state) - \
+                            self.log_likelihood(state)
+        
+        # log acceptance probability
+        log_accept_prob = log_like_ratio + \
+                            np.log(expon(h_j_prime, scale=1/self.beta)) - \
+                            np.log(expon(h_j, scale=1/self.beta))
+
+        # either accept or reject the proposed move
+        if np.log(np.random.uniform()) < log_accept_prob:
+            accept = 1
+            return proposed_state, accept
+        else:
+            accept = 0
+            return state, accept
+
         
     def position_change_move(self, 
                              state,
