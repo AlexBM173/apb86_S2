@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 from scipy.stats import gamma, poisson
 from scipy.special import gammaln, logsumexp
@@ -217,8 +219,6 @@ class RJMCMC:
             This is used to track the acceptance fraction of the chain;
             1 if the move was accepted, 0 otherwise.
         """
-        # TO DO: implement height change move
-        raise NotImplementedError("Height change move not implemented yet.")
         k = (len(state) - 1) // 2
         proposed_state = deepcopy(state)
 
@@ -227,7 +227,7 @@ class RJMCMC:
 
         # Proprose new position
         h_j = state[j-1]
-        h_j_prime = np.random.normal(loc=h_j, 0.005)
+        h_j_prime = h_j * np.exp(np.random.normal(loc=0.0, scale=0.5))
         proposed_state[j-1] = h_j_prime
 
         # log likelihood ratio
@@ -236,8 +236,8 @@ class RJMCMC:
         
         # log acceptance probability
         log_accept_prob = log_like_ratio + \
-                            np.log(expon(h_j_prime, scale=1/self.beta)) - \
-                            np.log(expon(h_j, scale=1/self.beta))
+                            self.alpha * np.log(h_j_prime/h_j) - \
+                            self.beta * (h_j_prime - h_j)
 
         # either accept or reject the proposed move
         if np.log(np.random.uniform()) < log_accept_prob:
@@ -275,8 +275,8 @@ class RJMCMC:
         k = (len(state) - 1) // 2
         proposed_state = deepcopy(state)
 
-        # choose which position to use
-        j = np.random.randint(1, k+1)
+        # choose which height to modify
+        j = np.random.randint(k, 2 * k + 1)
 
         # propose new position
         s_jminus1 = state[j-2] if j>1 else 0.0
@@ -358,8 +358,12 @@ class RJMCMC:
                             self.log_likelihood(state)
         
         # log prior ratio
-        # TO DO: implement log prior ratio term for the birth move
-        log_prior_ratio = 0.0
+        log_prior_ratio = np.log(self.prior_k.pmf(k+1)) - np.log(self.prior_k.pmf(k)) + \
+                            np.log(2 * (k+1) * (2 * k + 3)) - 2 * np.log(self.duration) + \
+                            np.log(s_star - s_j) + np.log(s_jplus1 - s_star) - np.log(s_jplus1 - s_j) + \
+                            self.alpha * np.log(self.beta) - gammaln(self.alpha) + \
+                            (self.alpha - 1) * (np.log(h_j_prime) + np.log(h_jplus1_prime) - np.log(h_j)) - \
+                            self.beta * (h_j_prime + h_jplus1_prime - h_j)
 
         # log proposal ratio
         bk = self.c * min(1, self.prior_k.pmf(k+1)/self.prior_k.pmf(k))
@@ -430,8 +434,12 @@ class RJMCMC:
                             self.log_likelihood(state)
         
         # log prior ratio
-        # TO DO: implement log prior ratio term for the death move
-        log_prior_ratio = 0.0
+        log_prior_ratio = np.log(self.prior_k.pmf(k-1)) - np.log(self.prior_k.pmf(k)) - \
+                            np.log(2 * k * (2 * k + 1)) + 2 * np.log(self.duration) - \
+                            np.log(s_j - s_jminus1) - np.log(s_jplus1 - s_j) + np.log(s_jplus1 - s_jminus1) - \
+                            self.alpha * np.log(self.beta) + gammaln(self.alpha) + \
+                            (self.alpha - 1) * (logh_j_prime - logh_j - logh_jplus1) - \
+                            self.beta * (np.exp(logh_j_prime) - np.exp(logh_j) - np.exp(logh_jplus1))
 
         # log proposal ratio
         bkminus1 = self.c * min(1, self.prior_k.pmf(k)/self.prior_k.pmf(k-1)) 
@@ -454,7 +462,8 @@ class RJMCMC:
             return state, accept
 
     def run_mcmc(self, 
-                 num_iter=100):
+                 num_iter=100,
+                 save_path=None):
         r"""
         Run the RJMCMC algorithm for a specified number of iterations.
 
@@ -462,6 +471,9 @@ class RJMCMC:
         ----------
         num_iter : int
             Number of MCMC iterations to perform.
+        save_path : str or Path, optional
+            Path to save the Markov chain as a ``.npy`` file. The chain contains
+            variable-length states, so it is stored as an object array.
         """
         # initialise the MCMC at these parameter values
         x0 = np.array([1.4e+04, 8.6e-03, 2.6e-03])
@@ -484,14 +496,21 @@ class RJMCMC:
             m = ['Height change', 'Position change', 'Birth', 'Death'][i]
             print(f"{m} moves attempted {100*f:.1f}% of the time",
                 f"with an acceptance fraction of {a:.3f}")
+
+        if save_path is not None:
+            np.save(Path(save_path), np.array(self.chain, dtype=object))
+
+        return self.chain
             
 
-def main():
-    intervals = np.loadtxt('coal_mining_accident_data.dat').T.flatten()
+def main(num_iter=100000, save_path="mcmc_chains.npy"):
+    intervals = np.loadtxt('data/coal_mining_accident_data.dat').T.flatten()
     sampler = RJMCMC(intervals)
-    sampler.run_mcmc(num_iter=1000)
+    chain = sampler.run_mcmc(num_iter=num_iter, save_path=save_path)
+    return chain
 
 
 if __name__ == "__main__":
 
-    main()
+    # Run the main function to perform RJMCMC sampling and store the resulting Markov chain in `mcmc_chains`
+    chain = main()
