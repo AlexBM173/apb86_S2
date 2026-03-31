@@ -165,10 +165,8 @@ class RJMCMC:
         """
         k = (len(state) - 1) // 2
 
-        b_k = self.c * min(1, self.prior_k.pmf(k+1)/self.prior_k.pmf(k)) \
-                if k<self.k_max else 0.0
-        d_k = self.c * min(1, self.prior_k.pmf(k-1)/self.prior_k.pmf(k)) \
-                if k>0 else 0.0
+        b_k = self.c * min(1, self.prior_k.pmf(k+1)/self.prior_k.pmf(k)) if k<self.k_max else 0.0
+        d_k = self.c * min(1, self.prior_k.pmf(k-1)/self.prior_k.pmf(k)) if k>0 else 0.0
 
         if k==0:
             eta_k = 1.0 - b_k - d_k
@@ -223,11 +221,12 @@ class RJMCMC:
         proposed_state = deepcopy(state)
 
         # Choose which height to use
-        j = np.random.randint(1, k+1)
+        j = np.random.randint(k + 1, 2 * k + 2)
 
-        # Proprose new position
+        # Propose new position
         h_j = state[j-1]
-        h_j_prime = h_j * np.exp(np.random.normal(loc=0.0, scale=0.5))
+        #h_j_prime = h_j * np.exp(np.random.normal(loc=0.0, scale=0.5))
+        h_j_prime = h_j * np.exp(np.random.uniform(low=-0.5, high=0.5))
         proposed_state[j-1] = h_j_prime
 
         # log likelihood ratio
@@ -276,7 +275,7 @@ class RJMCMC:
         proposed_state = deepcopy(state)
 
         # choose which height to modify
-        j = np.random.randint(k, 2 * k + 1)
+        j = np.random.randint(1, k + 1)
 
         # propose new position
         s_jminus1 = state[j-2] if j>1 else 0.0
