@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apb86-s2"
+version = "0.1.0"
+description = "S2 Advanced Statistical Methods coursework utilities"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "emcee>=3.1",
+  "dynesty>=2.1",
+]
+
+[project.optional-dependencies]
+notebook = [
+  "matplotlib>=3.7",
+  "corner>=2.2",
+  "jupyter>=1.0",
+]
+test = [
+  "pytest>=8.0",
+]
+dev = [
+  "pytest>=8.0",
+  "matplotlib>=3.7",
+  "corner>=2.2",
+  "jupyter>=1.0",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["varateMC*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"

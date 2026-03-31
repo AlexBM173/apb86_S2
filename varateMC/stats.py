@@ -1,48 +1,68 @@
 import numpy as np
-from scipy.stats import beta, expon, dirichlet
-from scipy.special import gamma
+from scipy.stats import expon, dirichlet, gamma as gamma_dist
+
 
 def height_prior_pdf(h, alpha, beta):
-    """
-    Returns the PDF of the prior on the heights evaluated at h for given parameters alpha and beta. The distribution is a
-    gamma distribution, but simplified to an exponential distribution when alpha = 1.
+    """Evaluate the prior density for a segment height (rate) parameter.
 
-    Arguments:
-        h (float) - The point at which to evaluate the PDF.
-        alpha (float) - The shape parameter of the gamma distribution.
-        beta (float) - The inverse-scale parameter of the gamma distribution.
+    Parameters
+    ----------
+    h : float
+        Height/rate value at which to evaluate the prior.
+    alpha : float
+        Shape parameter of the Gamma prior.
+    beta : float
+        Rate parameter (inverse scale) of the Gamma prior.
 
-    Returns:
-        prior_pdf - The PDF of the prior evaluated at h.
+    Returns
+    -------
+    float
+        Prior density value at ``h``.
+
+    Notes
+    -----
+    For ``alpha == 1``, the Gamma distribution reduces to Exponential.
     """
-    
+    # Special-case alpha==1 for exact equivalence with exponential prior form.
     if alpha == 1:
-        return expon.pdf(h, scale=1/beta)
+        return expon.pdf(h, scale=1 / beta)
     else:
-        return gamma.pdf(h, a=alpha, scale=1/beta)
-    
+        # Use SciPy's Gamma distribution implementation for general alpha.
+        return gamma_dist.pdf(h, a=alpha, scale=1 / beta)
+
+
 def change_point_prior_pdf(s, L):
+    """Evaluate Dirichlet prior density over ordered change-point locations.
+
+    Parameters
+    ----------
+    s : np.ndarray
+        Sorted change-point locations on ``[0, L]``.
+    L : float
+        Upper boundary of the domain.
+
+    Returns
+    -------
+    float
+        Prior density evaluated using a Dirichlet model on normalized gaps.
     """
-    Returns the PDF of the prior on the change point locations evaluated on an array of given s with length k. The
-    distribution is a Dirichlet distribution on the gaps between the change points.
+    if L <= 0:
+        raise ValueError("L must be positive")
 
-    Arguments:
-        s (np.array) - The values of the change points.
-        L (float) - The upper boundary of the domain on which the change points are defined.
+    s = np.asarray(s, dtype=float)
+    if s.ndim != 1:
+        raise ValueError("s must be a 1D array of ordered change points")
+    if np.any(s <= 0) or np.any(s >= L):
+        return 0.0
+    if np.any(np.diff(s) <= 0):
+        return 0.0
 
-     Returns:
-        prior_pdf - The PDF of the prior evaluated for the array s.
-    """
-    
-    k = len(s)
-    s = s/L # Entries into the scipy implementation of the Dirichlet distribution must be between zero and one.
-    shapes = np.ones(k) * 2
-    
-    gaps = np.array([s[0]])
-    for i in range(1, k):
-        np.append(gaps, s[i] - s[i-1])
-    np.append(gaps, 1 - s[-1])
+    # Normalize locations because scipy Dirichlet expects simplex components.
+    s_normalized = s / L
 
-    prior_pdf = dirichlet.pdf(gaps, shapes)
+    # Gap vector has k+1 components on the simplex for k change points.
+    gaps = np.concatenate(([s_normalized[0]], np.diff(s_normalized), [1 - s_normalized[-1]]))
+    shapes = np.ones(len(gaps)) * 2
 
-    return prior_pdf
+    # Evaluate Dirichlet density on normalized segment lengths.
+    return float(dirichlet.pdf(gaps, shapes))

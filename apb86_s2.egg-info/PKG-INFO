@@ -1,3 +1,25 @@
+Metadata-Version: 2.4
+Name: apb86-s2
+Version: 0.1.0
+Summary: S2 Advanced Statistical Methods coursework utilities
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.24
+Requires-Dist: scipy>=1.10
+Requires-Dist: emcee>=3.1
+Requires-Dist: dynesty>=2.1
+Provides-Extra: notebook
+Requires-Dist: matplotlib>=3.7; extra == "notebook"
+Requires-Dist: corner>=2.2; extra == "notebook"
+Requires-Dist: jupyter>=1.0; extra == "notebook"
+Provides-Extra: test
+Requires-Dist: pytest>=8.0; extra == "test"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: matplotlib>=3.7; extra == "dev"
+Requires-Dist: corner>=2.2; extra == "dev"
+Requires-Dist: jupyter>=1.0; extra == "dev"
+
 # apb86_S2
 
 Utilities and reproducible analysis code for Bayesian Poisson process models
